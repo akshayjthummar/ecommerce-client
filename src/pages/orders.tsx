@@ -1,0 +1,99 @@
+import { ReactElement, useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import { Column } from "react-table";
+import TableHOC from "../components/admin/TableHOC";
+import { Skeleton } from "../components/loader";
+import { useMyOrdersQuery } from "../redux/api/orderAPI";
+import { CustomError } from "../types/api-types";
+import { userReducerInitialState } from "../types/reducer-types";
+
+type DataType = {
+  _id: string;
+  amount: number;
+  quantity: number;
+  discount: number;
+  status: ReactElement;
+  action: ReactElement;
+};
+const column: Column<DataType>[] = [
+  {
+    Header: "ID",
+    accessor: "_id",
+  },
+  {
+    Header: "Quantity",
+    accessor: "quantity",
+  },
+  {
+    Header: "Amount",
+    accessor: "amount",
+  },
+  {
+    Header: "Discount",
+    accessor: "discount",
+  },
+  {
+    Header: "Status",
+    accessor: "status",
+  },
+  {
+    Header: "Action",
+    accessor: "action",
+  },
+];
+
+const Orders = () => {
+  const { user } = useSelector(
+    (state: { userReducer: userReducerInitialState }) => state.userReducer
+  );
+
+  const { isLoading, isError, error, data } = useMyOrdersQuery(user?._id!);
+
+  if (isError) toast.error((error as CustomError).data.message);
+
+  const [row, setRows] = useState<DataType[]>([]);
+  const Table = TableHOC<DataType>(
+    column,
+    row,
+    "dashboard-product-box",
+    "Orders",
+    row.length < 6 ? false : true
+  )();
+
+  useEffect(() => {
+    if (data)
+      setRows(
+        data.orders.map((i) => ({
+          _id: i._id,
+          amount: i.total,
+          discount: i.discount,
+          quantity: i.orderItems.length,
+          status: (
+            <span
+              className={
+                i.status === "Proccessing"
+                  ? "red"
+                  : i.status === "Shipped"
+                  ? "green"
+                  : "purple"
+              }
+            >
+              {i.status}
+            </span>
+          ),
+          action: <Link to={`/admin/transaction/${i._id}`}>Manage</Link>,
+        }))
+      );
+  }, [data]);
+
+  return (
+    <div className="container">
+      <h1>My Orders</h1>
+      {isLoading ? <Skeleton /> : Table}
+    </div>
+  );
+};
+
+export default Orders;
